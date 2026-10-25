@@ -40,6 +40,10 @@ jobs:
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
+      - name: Warn when the API URL is missing
+        if: ${{ vars.VITE_API_URL == '' }}
+        run: echo "::warning::Set the repository Actions variable VITE_API_URL to the deployed API base URL ending in /api; signup and other API features will be unavailable until then."
+
       - name: Build frontend
         run: npm run build --workspace=client
         working-directory: webforge-ai
