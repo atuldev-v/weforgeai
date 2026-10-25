@@ -29,7 +29,9 @@ app.set('trust proxy', 1);
 app.use(helmet());
 app.use(
   cors({
-    origin: env.CLIENT_URL,
+    // CLIENT_URL may include a path such as /weforgeai for GitHub Pages, while
+    // the browser's Origin header never includes a path.
+    origin: new URL(env.CLIENT_URL).origin,
     credentials: true,
   })
 );

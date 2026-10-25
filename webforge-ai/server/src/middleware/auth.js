@@ -10,7 +10,9 @@ export const requireAuth = asyncHandler(async (req, _res, next) => {
   const headerToken = req.headers.authorization?.startsWith('Bearer ')
     ? req.headers.authorization.slice(7)
     : null;
-  const token = cookieToken || headerToken;
+  // Prefer the explicit bearer token so a stale cookie cannot override a new
+  // session token used by static hosts where cross-site cookies are blocked.
+  const token = headerToken || cookieToken;
 
   if (!token) throw ApiError.unauthorized('Authentication required');
 

@@ -289,7 +289,7 @@ DELETE /api/users/byok
 ## Security
 
 - **Passwords**: hashed with bcrypt (12 rounds); never logged or returned in API responses.
-- **Sessions**: JWTs in httpOnly, sameSite cookies; also accepted via `Authorization: Bearer` for API clients.
+- **Sessions**: JWTs use httpOnly cookies for same-origin deployments and a tab-scoped bearer token when the API is on another origin; the API also accepts `Authorization: Bearer` clients.
 - **Secrets at rest**: GitHub tokens and BYOK keys are encrypted with AES-256-GCM and never sent back to the client.
 - **Rate limiting**: dedicated limiters on `/api/auth/*` and `/api/ai/*`, plus a general limiter on the rest of `/api`.
 - **Hardening**: `express-mongo-sanitize`, Helmet, and strict CORS (only `CLIENT_URL` is allowed).
@@ -302,11 +302,52 @@ DELETE /api/users/byok
 
 | Part | Suggested platforms | Notes |
 |---|---|---|
-| Frontend (`client/`) | Vercel, Netlify | Build: `npm run build` · Output: `client/dist` |
-| Backend (`server/`) | Render, Railway, Fly.io | Set all `server/.env` values as platform env vars. |
+| Frontend (`client/`) | GitHub Pages, Vercel, Netlify | GitHub Pages builds and deploys from the repository's Actions workflow. |
+| Backend (`server/`) | Render (`../render.yaml`), Railway, Fly.io | The Render Blueprint defines the Express API service and health check. |
 | Database | MongoDB Atlas (free tier) | `MONGODB_URI` is **required** in production. |
 
-Remember to point `CLIENT_URL` and `GITHUB_CALLBACK_URL` to your real domains.
+In production, set `CLIENT_URL` to the deployed frontend base URL and configure
+`GITHUB_CALLBACK_URL` to match the callback registered with GitHub OAuth.
+
+### GitHub Pages frontend
+
+The workflow in `../.github/workflows/deploy-pages.yml` publishes the client at
+`https://atuldev-v.github.io/weforgeai/` when client or workflow changes are
+pushed to `main`.
+In the repository's **Settings → Pages**, set the build and deployment source
+to **GitHub Actions**. GitHub Pages serves only the frontend; deploy the Express
+server and MongoDB separately. Set the repository Actions variable
+`VITE_API_URL` to your API's full base URL, including `/api` (for example,
+`https://api.example.com/api`), and set the server's `CLIENT_URL` to the
+frontend URL without a trailing slash.
+
+### Express API and MongoDB setup
+
+The repository's root [`render.yaml`](../render.yaml) deploys this server as a
+Render web service. It starts the existing Express API, checks `/api/health`,
+generates a production `JWT_SECRET`, and prompts for the database connection
+string. It uses Render's free plan, which can spin down after 15 minutes idle
+and take about a minute to wake up on the next API request.
+
+1. Create a MongoDB Atlas cluster and database user. Add the Render service's
+   outbound IP ranges to the Atlas IP access list, then copy Atlas's application
+   connection string. Atlas accepts connections only from allowed IPs; see the
+   [Atlas IP access list guide](https://www.mongodb.com/docs/atlas/security/ip-access-list/).
+2. In Render, create a Blueprint from this repository and supply the Atlas URI
+   when prompted for `MONGODB_URI`. Keep the URI private; don't commit it.
+3. After the API deploys, set the repository Actions variable `VITE_API_URL` to
+   `https://<your-render-service>.onrender.com/api`, then run the Pages workflow
+   again. The API's `CLIENT_URL` is preconfigured for the Pages URL above.
+
+For GitHub OAuth, set `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` in Render
+and register `https://<your-render-service>.onrender.com/api/github/callback`
+as the OAuth callback. The server derives this callback from Render's service
+URL unless `GITHUB_CALLBACK_URL` is explicitly set.
+
+When the API URL is on a different origin, the client uses a bearer token kept
+in the current tab's `sessionStorage`; browsers may block cross-site cookies.
+For deployments that require httpOnly-cookie-only auth, expose the API through
+the same origin as the frontend.
 
 ### Production build
 

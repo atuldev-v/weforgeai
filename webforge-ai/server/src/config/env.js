@@ -1,6 +1,8 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+const serverUrl = process.env.SERVER_URL || process.env.RENDER_EXTERNAL_URL || 'http://localhost:5100';
+
 function bool(val, fallback = false) {
   if (val === undefined) return fallback;
   return String(val).toLowerCase() === 'true';
@@ -10,7 +12,7 @@ export const env = {
   NODE_ENV: process.env.NODE_ENV || 'development',
   PORT: Number(process.env.PORT || 5100),
   CLIENT_URL: process.env.CLIENT_URL || 'http://localhost:5173',
-  SERVER_URL: process.env.SERVER_URL || 'http://localhost:5100',
+  SERVER_URL: serverUrl,
 
   MONGODB_URI: process.env.MONGODB_URI || '',
 
@@ -28,7 +30,7 @@ export const env = {
 
   GITHUB_CLIENT_ID: process.env.GITHUB_CLIENT_ID || '',
   GITHUB_CLIENT_SECRET: process.env.GITHUB_CLIENT_SECRET || '',
-  GITHUB_CALLBACK_URL: process.env.GITHUB_CALLBACK_URL || 'http://localhost:5100/api/github/callback',
+  GITHUB_CALLBACK_URL: process.env.GITHUB_CALLBACK_URL || `${serverUrl}/api/github/callback`,
 
   SMTP_HOST: process.env.SMTP_HOST || '',
   SMTP_PORT: Number(process.env.SMTP_PORT || 587),
